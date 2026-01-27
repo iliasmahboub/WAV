@@ -88,7 +88,7 @@ class AudioManager {
     getSpectralEnergy() {
         if (!this.analyser || !this.dataArray) return { bass: 0, mid: 0, high: 0, isBeat: false };
 
-        this.analyser.getByteFrequencyData(this.dataArray);
+        this.analyser.getByteFrequencyData(this.dataArray as Uint8Array<ArrayBuffer>);
 
         const getAvg = (start: number, end: number) => {
             let sum = 0;

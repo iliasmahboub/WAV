@@ -110,7 +110,9 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
         if (nextIndex < 0) nextIndex = listLength - 1;
         if (nextIndex >= listLength) nextIndex = 0;
 
-        const beat = isCatalog ? CATALOG[nextIndex] : (immediateTrack ?? userTracks[nextIndex]);
+        const catalogBeat = isCatalog ? CATALOG[nextIndex] : null;
+        const userBeat = isCatalog ? null : (immediateTrack ?? userTracks[nextIndex]);
+        const beat = catalogBeat ?? userBeat;
         if (!beat) return;
 
         const updateTrackState = () => {
@@ -119,12 +121,14 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
             setProgress(0);
             if (isCatalog) {
                 setCurrentBeatIndex(nextIndex);
-                setPreset(beat.mood ?? 'default');
+                setPreset(catalogBeat?.mood ?? 'default');
                 if (!isCustomMode) {
-                    setColor1(beat.color1);
-                    setColor2(beat.color2);
-                    setCustomColor1(beat.color1);
-                    setCustomColor2(beat.color2);
+                    if (catalogBeat) {
+                        setColor1(catalogBeat.color1);
+                        setColor2(catalogBeat.color2);
+                        setCustomColor1(catalogBeat.color1);
+                        setCustomColor2(catalogBeat.color2);
+                    }
                 }
             } else {
                 setUserIndex(nextIndex);
@@ -151,24 +155,27 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
 
         if (audioRef.current) {
             const audio = audioRef.current;
+            const handlePlay = async () => {
+                audio.src = beat.audioFile;
+                try {
+                    await audioManager.initialize(audio);
+                    await audioManager.resume();
+                    audio.volume = 0;
+                    await audio.play();
+                    if (!options?.silent) {
+                        gsap.to(audio, { volume: 1, duration: 0.5 });
+                    }
+                    setIsPlaying(true);
+                    setShowUI(true);
+                } catch (e) {
+                    audio.volume = 1;
+                }
+            };
             gsap.to(audio, {
                 volume: 0,
                 duration: 0.35,
-                onComplete: async () => {
-                    audio.src = beat.audioFile;
-                    try {
-                        await audioManager.initialize(audio);
-                        await audioManager.resume();
-                        audio.volume = 0;
-                        await audio.play();
-                        if (!options?.silent) {
-                            gsap.to(audio, { volume: 1, duration: 0.5 });
-                        }
-                        setIsPlaying(true);
-                        setShowUI(true);
-                    } catch (e) {
-                        audio.volume = 1;
-                    }
+                onComplete: () => {
+                    void handlePlay();
                 }
             });
         }

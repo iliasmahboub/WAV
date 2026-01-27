@@ -24,3 +24,5 @@ public/beats/
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
