@@ -21,7 +21,7 @@ export const CATALOG: Beat[] = [
         color1: '#f8f9fa',
         color2: '#212529',
         tags: ['AMBIENT', 'CINEMATIC'],
-        audioFile: '/beats/INTRO.wav'
+        audioFile: 'https://9uat0nx2pweuuf7x.public.blob.vercel-storage.com/Beats/INTRO.wav'
     },
     {
         id: '002',
@@ -32,7 +32,7 @@ export const CATALOG: Beat[] = [
         color1: '#0b0f19',
         color2: '#5c7cfa',
         tags: ['TRAP', 'DARK'],
-        audioFile: '/beats/DREXEL - TRAP.wav'
+        audioFile: 'https://9uat0nx2pweuuf7x.public.blob.vercel-storage.com/Beats/DREXEL%20-%20TRAP.wav'
     },
     {
         id: '003',
@@ -43,7 +43,7 @@ export const CATALOG: Beat[] = [
         color1: '#f06595',
         color2: '#12b886',
         tags: ['JERSEY', 'CLUB'],
-        audioFile: '/beats/ONLY GIRL - JERSEY.wav'
+        audioFile: 'https://9uat0nx2pweuuf7x.public.blob.vercel-storage.com/Beats/ONLY%20GIRL%20-%20JERSEY.wav'
     },
     {
         id: '004',
@@ -54,7 +54,7 @@ export const CATALOG: Beat[] = [
         color1: '#0b1a2a',
         color2: '#f08c00',
         tags: ['TRAP', 'MELODIC'],
-        audioFile: '/beats/GOD IS A WOMAN.wav'
+        audioFile: 'https://9uat0nx2pweuuf7x.public.blob.vercel-storage.com/Beats/GOD%20IS%20A%20WOMAN.wav'
     },
     {
         id: '005',
@@ -65,7 +65,7 @@ export const CATALOG: Beat[] = [
         color1: '#ffd43b',
         color2: '#c92a2a',
         tags: ['TRAP', 'LATIN'],
-        audioFile: '/beats/EL CHAPO.wav'
+        audioFile: 'https://9uat0nx2pweuuf7x.public.blob.vercel-storage.com/Beats/EL%20CHAPO.wav'
     },
     {
         id: '006',
@@ -76,7 +76,7 @@ export const CATALOG: Beat[] = [
         color1: '#fcc419',
         color2: '#8d4e1b',
         tags: ['TRAP', 'ETHNIC'],
-        audioFile: '/beats/SAHARA.wav'
+        audioFile: 'https://9uat0nx2pweuuf7x.public.blob.vercel-storage.com/Beats/SAHARA.wav'
     },
     {
         id: '007',
@@ -87,7 +87,7 @@ export const CATALOG: Beat[] = [
         color1: '#0b3d2e',
         color2: '#51cf66',
         tags: ['DRILL', 'MELODIC'],
-        audioFile: '/beats/ALIVE - DRILL.wav'
+        audioFile: 'https://9uat0nx2pweuuf7x.public.blob.vercel-storage.com/Beats/ALIVE%20-%20DRILL.wav'
     },
     {
         id: '008',
@@ -98,7 +98,7 @@ export const CATALOG: Beat[] = [
         color1: '#1c2a3d',
         color2: '#9ec5ff',
         tags: ['AMBIENT', 'LO-FI'],
-        audioFile: '/beats/INTERLUDE.mp3',
+        audioFile: 'https://9uat0nx2pweuuf7x.public.blob.vercel-storage.com/Beats/INTERLUDE.mp3',
         mood: 'dreamy'
     },
     {
@@ -110,7 +110,7 @@ export const CATALOG: Beat[] = [
         color1: '#3b0b0b',
         color2: '#dee2e6',
         tags: ['TRAP', 'CINEMATIC'],
-        audioFile: '/beats/SOVIET CONNECTIONS.wav'
+        audioFile: 'https://9uat0nx2pweuuf7x.public.blob.vercel-storage.com/Beats/SOVIET%20CONNECTIONS.wav'
     },
     {
         id: '010',
@@ -121,6 +121,6 @@ export const CATALOG: Beat[] = [
         color1: '#0b1a20',
         color2: '#12b5d0',
         tags: ['HOUSE', 'UPLIFT'],
-        audioFile: '/beats/MIRACLE - HOUSE.wav'
+        audioFile: 'https://9uat0nx2pweuuf7x.public.blob.vercel-storage.com/Beats/MIRACLE%20-%20HOUSE.wav'
     }
 ];
