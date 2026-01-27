@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import type { CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { audioManager } from '../utils/AudioManager';
 import { CATALOG } from '../data/CatalogData';
@@ -21,6 +22,231 @@ interface UserTrack {
 }
 
 type TrackSource = 'catalog' | 'user';
+type LoadTrackOptions = { silent?: boolean; deferPlay?: boolean; restart?: boolean };
+
+interface FontStyles {
+    main: CSSProperties;
+    mono: CSSProperties;
+}
+
+interface TopBarProps {
+    activeSource: TrackSource;
+    userTracksLength: number;
+    currentBeatIndex: number;
+    userIndex: number;
+    font: FontStyles;
+    onLoadCatalog: (index: number) => void;
+    onLoadUser: (index: number) => void;
+    onToggleColors: () => void;
+    onUploadClick: () => void;
+}
+
+const HudTopBar = ({ activeSource, userTracksLength, currentBeatIndex, userIndex, font, onLoadCatalog, onLoadUser, onToggleColors, onUploadClick }: TopBarProps) => (
+    <div className="hud-topbar" style={{ position: 'absolute', top: 20, right: 20, display: 'flex', gap: 8, pointerEvents: 'auto' }}>
+        <button onClick={() => onLoadCatalog(currentBeatIndex)} style={{
+            ...font.mono, background: activeSource === 'catalog' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.8)',
+            border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '8px 12px', cursor: 'pointer'
+        }}>CATALOG</button>
+        <button onClick={() => { if (userTracksLength > 0) onLoadUser(userIndex); }} style={{
+            ...font.mono, background: activeSource === 'user' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.8)',
+            border: '1px solid rgba(255,255,255,0.2)', color: userTracksLength > 0 ? '#fff' : 'rgba(255,255,255,0.35)',
+            padding: '8px 12px', cursor: userTracksLength > 0 ? 'pointer' : 'not-allowed'
+        }}>UPLOADS</button>
+        <button onClick={onToggleColors} style={{
+            ...font.mono, background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.2)',
+            color: '#fff', padding: '8px 14px', cursor: 'pointer'
+        }}>COLORS</button>
+        <button onClick={onUploadClick} style={{
+            ...font.mono, background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.2)',
+            color: '#fff', padding: '8px 14px', cursor: 'pointer'
+        }}>+ YOUR OWN</button>
+    </div>
+);
+
+interface ColorPanelProps {
+    show: boolean;
+    customColor1: string;
+    customColor2: string;
+    isCustomMode: boolean;
+    font: FontStyles;
+    onColor1: (val: string) => void;
+    onColor2: (val: string) => void;
+    onApply: () => void;
+    onReset: () => void;
+}
+
+const ColorPanel = ({ show, customColor1, customColor2, isCustomMode, font, onColor1, onColor2, onApply, onReset }: ColorPanelProps) => {
+    if (!show) return null;
+    return (
+        <div className="hud-color-panel" style={{
+            position: 'absolute', top: 65, right: 20, background: 'rgba(0,0,0,0.95)',
+            border: '1px solid rgba(255,255,255,0.1)', padding: 16, width: 180, pointerEvents: 'auto'
+        }}>
+            <div style={{ marginBottom: 12 }}>
+                <div style={{ ...font.mono, fontSize: 8, opacity: 0.4, marginBottom: 6 }}>PRIMARY</div>
+                <input type="color" value={customColor1} onChange={e => onColor1(e.target.value)} style={{ width: 30, height: 30, border: 'none', cursor: 'pointer' }} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+                <div style={{ ...font.mono, fontSize: 8, opacity: 0.4, marginBottom: 6 }}>ACCENT</div>
+                <input type="color" value={customColor2} onChange={e => onColor2(e.target.value)} style={{ width: 30, height: 30, border: 'none', cursor: 'pointer' }} />
+            </div>
+            <button onClick={onApply} style={{
+                ...font.mono, width: '100%', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+                color: '#fff', padding: 8, cursor: 'pointer', marginBottom: 6
+            }}>APPLY</button>
+            {isCustomMode && <button onClick={onReset} style={{
+                ...font.mono, width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                color: 'rgba(255,255,255,0.5)', padding: 8, cursor: 'pointer'
+            }}>RESET</button>}
+        </div>
+    );
+};
+
+interface TrackSidebarProps {
+    activeSource: TrackSource;
+    currentBeatIndex: number;
+    userTracks: UserTrack[];
+    userIndex: number;
+    onLoadCatalog: (index: number) => void;
+    onLoadUser: (index: number) => void;
+}
+
+const TrackSidebar = ({ activeSource, currentBeatIndex, userTracks, userIndex, onLoadCatalog, onLoadUser }: TrackSidebarProps) => (
+    <div className="track-sidebar">
+        <div className="track-sidebar-title">/ARCHIVE</div>
+        <div className="track-sidebar-section">
+            <div className="track-sidebar-folder">CATALOG</div>
+            <div className="track-sidebar-list">
+                {CATALOG.map((track, index) => (
+                    <button
+                        key={track.id}
+                        onClick={() => onLoadCatalog(index)}
+                        className={`track-sidebar-item ${activeSource === 'catalog' && currentBeatIndex === index ? 'is-active' : ''}`}
+                    >
+                        <span>{track.id}</span>
+                        <span>{track.title}</span>
+                    </button>
+                ))}
+            </div>
+        </div>
+        <div className="track-sidebar-section">
+            <div className="track-sidebar-folder">UPLOADS</div>
+            <div className="track-sidebar-list">
+                {userTracks.length === 0 && (
+                    <div className="track-sidebar-empty">DROP A FILE TO START</div>
+                )}
+                {userTracks.map((track, index) => (
+                    <button
+                        key={track.objectUrl}
+                        onClick={() => onLoadUser(index)}
+                        className={`track-sidebar-item ${activeSource === 'user' && userIndex === index ? 'is-active' : ''}`}
+                    >
+                        <span>U-{String(index + 1).padStart(2, '0')}</span>
+                        <span>{track.title}</span>
+                    </button>
+                ))}
+            </div>
+        </div>
+    </div>
+);
+
+interface BottomHudProps {
+    progress: number;
+    trackInfoRef: React.RefObject<HTMLDivElement>;
+    bpmRef: React.RefObject<HTMLDivElement>;
+    detectedBPM: number;
+    currentTrack: UserTrack | (typeof CATALOG)[number] | undefined;
+    activeSource: TrackSource;
+    userIndex: number;
+    currentBeatId: string;
+    currentBeatIndex: number;
+    userTracksLength: number;
+    catalogLength: number;
+    trackLabel: string;
+    font: FontStyles;
+    isPlaying: boolean;
+    onPrev: () => void;
+    onNext: () => void;
+    onTogglePlay: () => void;
+}
+
+const BottomHud = ({
+    progress,
+    trackInfoRef,
+    bpmRef,
+    detectedBPM,
+    currentTrack,
+    activeSource,
+    userIndex,
+    currentBeatId,
+    currentBeatIndex,
+    userTracksLength,
+    catalogLength,
+    trackLabel,
+    font,
+    isPlaying,
+    onPrev,
+    onNext,
+    onTogglePlay
+}: BottomHudProps) => (
+    <div className="hud-bottom" style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, padding: 28,
+        background: 'linear-gradient(transparent, rgba(0,0,0,0.9))', pointerEvents: 'auto'
+    }}>
+        <div style={{ width: '100%', height: 2, background: 'rgba(255,255,255,0.1)', marginBottom: 22 }}>
+            <div style={{ height: '100%', width: `${progress}%`, background: '#fff', transition: 'width 0.1s' }} />
+        </div>
+
+        <div className="hud-bottom-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <div ref={trackInfoRef} className="hud-track-info" style={{ flex: 1 }}>
+                <div style={{ ...font.mono, fontSize: 8, opacity: 0.4, marginBottom: 6 }}>
+                    NOW PLAYING / {activeSource === 'user' ? `U-${String(userIndex + 1).padStart(2, '0')}` : currentBeatId}
+                </div>
+                <div style={{ ...font.main, fontSize: 'clamp(24px, 4vw, 44px)', fontWeight: 300, letterSpacing: '0.03em', lineHeight: 1, marginBottom: 6 }}>
+                    <span style={{ opacity: 0.25 }}>"</span>{currentTrack?.title ?? 'NO TRACK'}<span style={{ opacity: 0.25 }}>"</span>
+                </div>
+                <div style={{ ...font.mono, fontSize: 9, opacity: 0.4, marginBottom: 4 }}>{currentTrack?.subtitle ?? 'UPLOAD A TRACK TO START'}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div ref={bpmRef} style={{
+                        ...font.mono, fontSize: 11, opacity: 0.7,
+                        color: detectedBPM > 0 ? '#4ade80' : 'inherit'
+                    }}>
+                        {detectedBPM > 0 ? `${detectedBPM} BPM` : `${currentTrack?.bpm ? `${currentTrack.bpm} BPM` : '-- BPM'}`}
+                        {detectedBPM > 0 && <span style={{ fontSize: 8, marginLeft: 4, opacity: 0.5 }}>DETECTED</span>}
+                    </div>
+                    <div style={{ ...font.mono, fontSize: 9, opacity: 0.35 }}>{currentTrack?.year ?? '--'}</div>
+                </div>
+            </div>
+
+            <div className="hud-controls" style={{ display: 'flex', alignItems: 'center', gap: 16, paddingBottom: 6 }}>
+                <button
+                    onClick={onPrev}
+                    style={{ ...font.mono, background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 8 }}
+                >
+                    PREV
+                </button>
+                <button onClick={onTogglePlay} className="hud-play-button">
+                    {isPlaying ? 'PAUSE' : 'PLAY'}
+                </button>
+                <button
+                    onClick={onNext}
+                    style={{ ...font.mono, background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 8 }}
+                >
+                    NEXT
+                </button>
+            </div>
+
+            <div className="hud-counter" style={{ flex: 1, textAlign: 'right' }}>
+                <div style={{ ...font.mono, fontSize: 8, opacity: 0.4, marginBottom: 8 }}>{trackLabel}</div>
+                <div style={{ ...font.mono, fontSize: 12 }}>
+                    {activeSource === 'user'
+                        ? `${String(userIndex + 1).padStart(2, '0')} / ${String(userTracksLength).padStart(2, '0')}`
+                        : `${String(currentBeatIndex + 1).padStart(2, '0')} / ${String(catalogLength).padStart(2, '0')}`}
+                </div>
+            </div>
+        </div>
+    </div>
+);
 
 export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) => {
     const [showIntro, setShowIntro] = useState(true);
@@ -41,6 +267,7 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
     const introRef = useRef<HTMLDivElement>(null);
     const introDoneRef = useRef(false);
     const introLoadedRef = useRef(false);
+    const mobileInitRef = useRef(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const trackInfoRef = useRef<HTMLDivElement>(null);
@@ -100,7 +327,7 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
         nextSource: TrackSource,
         index: number,
         immediateTrack?: UserTrack,
-        options?: { silent?: boolean }
+        options?: LoadTrackOptions
     ) => {
         const isCatalog = nextSource === 'catalog';
         const listLength = isCatalog ? CATALOG.length : userTracks.length;
@@ -155,12 +382,22 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
 
         if (audioRef.current) {
             const audio = audioRef.current;
+            if (options?.deferPlay) {
+                audio.src = beat.audioFile;
+                audio.load();
+                audio.currentTime = 0;
+                setIsPlaying(false);
+                return;
+            }
             const handlePlay = async () => {
                 audio.src = beat.audioFile;
                 try {
                     await audioManager.initialize(audio);
                     await audioManager.resume();
                     audio.volume = 0;
+                    if (options?.restart) {
+                        audio.currentTime = 0;
+                    }
                     await audio.play();
                     if (!options?.silent) {
                         gsap.to(audio, { volume: 1, duration: 0.5 });
@@ -209,11 +446,10 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
             onComplete: () => {
                 setShowIntro(false);
                 setShowUI(true);
-                if (!audioManager.isPlaying()) {
-                    introLoadedRef.current = false;
-                    void loadTrack('catalog', 0);
-                } else if (!introLoadedRef.current) {
-                    void loadTrack('catalog', 0);
+                if (introLoadedRef.current) {
+                    void loadTrack('catalog', 0, undefined, { restart: true });
+                } else if (!audioManager.isPlaying()) {
+                    void loadTrack('catalog', 0, undefined, { restart: true });
                 }
                 if (audioRef.current) {
                     gsap.to(audioRef.current, { volume: 1, duration: 0.9, ease: 'power2.out' });
@@ -229,7 +465,7 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
             gsap.to(introRef.current, { opacity: 1, duration: 0.1 });
         }
         introLoadedRef.current = true;
-        void loadTrack('catalog', 0, undefined, { silent: true });
+        void loadTrack('catalog', 0, undefined, { deferPlay: true });
     };
 
     useEffect(() => {
@@ -287,6 +523,14 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
     }, [showIntro]);
 
     useEffect(() => {
+        if (showIntro || mobileInitRef.current) return;
+        if (window.matchMedia('(max-width: 720px)').matches) {
+            setShowUI(false);
+            mobileInitRef.current = true;
+        }
+    }, [showIntro]);
+
+    useEffect(() => {
         if (isCustomMode) {
             setColor1(customColor1);
             setColor2(customColor2);
@@ -324,178 +568,86 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
     ) : null;
 
     // ARCHIVE
-    const hudPortal = createPortal(
-        <div className={`hud-root ${showIntro ? 'hud-hidden' : ''}`} style={{ position: 'fixed', inset: 0, zIndex: 2000, color: '#fff', pointerEvents: 'none' }}>
+    const hudPortal = !showIntro ? createPortal(
+        <div className="hud-root" style={{ position: 'fixed', inset: 0, zIndex: 2000, color: '#fff', pointerEvents: 'none' }}>
+            <div className="hud-mobile-shell">
+                {/* Toggle Button - always visible */}
+                <button onClick={() => setShowUI(!showUI)} className="hud-toggle" style={{
+                    position: 'absolute', top: 20, left: 20, ...font.mono,
+                    background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.2)',
+                    color: '#fff', padding: '8px 14px', cursor: 'pointer', pointerEvents: 'auto',
+                    transition: 'all 0.2s'
+                }}>{showUI ? 'HIDE' : 'SHOW'}</button>
 
-            {/* Toggle Button - always visible */}
-            <button onClick={() => setShowUI(!showUI)} style={{
-                position: 'absolute', top: 20, left: 20, ...font.mono,
-                background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.2)',
-                color: '#fff', padding: '8px 14px', cursor: 'pointer', pointerEvents: 'auto',
-                transition: 'all 0.2s'
-            }}>{showUI ? 'HIDE' : 'SHOW'}</button>
+                {/* Main HUD */}
+                <div
+                    className="hud-main"
+                    style={{
+                        opacity: showUI ? 1 : 0,
+                        transform: showUI ? 'translateY(0)' : 'translateY(20px)',
+                        pointerEvents: showUI ? 'auto' : 'none',
+                        transition: 'opacity 0.2s ease, transform 0.2s ease'
+                    }}
+                >
+                    <HudTopBar
+                        activeSource={activeSource}
+                        userTracksLength={userTracks.length}
+                        currentBeatIndex={currentBeatIndex}
+                        userIndex={userIndex}
+                        font={font}
+                        onLoadCatalog={(index) => void loadTrack('catalog', index)}
+                        onLoadUser={(index) => void loadTrack('user', index)}
+                        onToggleColors={() => setShowColorPanel(!showColorPanel)}
+                        onUploadClick={() => fileInputRef.current?.click()}
+                    />
 
-            {/* Main HUD */}
-            <div
-                style={{
-                    opacity: showUI ? 1 : 0,
-                    transform: showUI ? 'translateY(0)' : 'translateY(20px)',
-                    pointerEvents: showUI ? 'auto' : 'none',
-                    transition: 'opacity 0.2s ease, transform 0.2s ease'
-                }}
-            >
+                    <ColorPanel
+                        show={showColorPanel}
+                        customColor1={customColor1}
+                        customColor2={customColor2}
+                        isCustomMode={isCustomMode}
+                        font={font}
+                        onColor1={setCustomColor1}
+                        onColor2={setCustomColor2}
+                        onApply={() => { setColor1(customColor1); setColor2(customColor2); setIsCustomMode(true); }}
+                        onReset={() => { setIsCustomMode(false); setColor1(currentBeat.color1); setColor2(currentBeat.color2); }}
+                    />
 
-                {/* Top Right */}
-                <div style={{ position: 'absolute', top: 20, right: 20, display: 'flex', gap: 8, pointerEvents: 'auto' }}>
-                    <button onClick={() => { void loadTrack('catalog', currentBeatIndex); }} style={{
-                        ...font.mono, background: activeSource === 'catalog' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.8)',
-                        border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '8px 12px', cursor: 'pointer'
-                    }}>CATALOG</button>
-                    <button onClick={() => { if (userTracks.length > 0) void loadTrack('user', userIndex); }} style={{
-                        ...font.mono, background: activeSource === 'user' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.8)',
-                        border: '1px solid rgba(255,255,255,0.2)', color: userTracks.length > 0 ? '#fff' : 'rgba(255,255,255,0.35)',
-                        padding: '8px 12px', cursor: userTracks.length > 0 ? 'pointer' : 'not-allowed'
-                    }}>UPLOADS</button>
-                    <button onClick={() => setShowColorPanel(!showColorPanel)} style={{
-                        ...font.mono, background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.2)',
-                        color: '#fff', padding: '8px 14px', cursor: 'pointer'
-                    }}>COLORS</button>
-                    <button onClick={() => fileInputRef.current?.click()} style={{
-                        ...font.mono, background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.2)',
-                        color: '#fff', padding: '8px 14px', cursor: 'pointer'
-                    }}>+ YOUR OWN</button>
+                    <TrackSidebar
+                        activeSource={activeSource}
+                        currentBeatIndex={currentBeatIndex}
+                        userTracks={userTracks}
+                        userIndex={userIndex}
+                        onLoadCatalog={(index) => void loadTrack('catalog', index)}
+                        onLoadUser={(index) => void loadTrack('user', index)}
+                    />
+
+                    <BottomHud
+                        progress={progress}
+                        trackInfoRef={trackInfoRef}
+                        bpmRef={bpmRef}
+                        detectedBPM={detectedBPM}
+                        currentTrack={currentTrack}
+                        activeSource={activeSource}
+                        userIndex={userIndex}
+                        currentBeatId={currentBeat?.id ?? '--'}
+                        currentBeatIndex={currentBeatIndex}
+                        userTracksLength={userTracks.length}
+                        catalogLength={CATALOG.length}
+                        trackLabel={trackLabel}
+                        font={font}
+                        isPlaying={isPlaying}
+                        onPrev={() => void loadTrack(activeSource, activeSource === 'user' ? userIndex - 1 : currentBeatIndex - 1)}
+                        onNext={() => void loadTrack(activeSource, activeSource === 'user' ? userIndex + 1 : currentBeatIndex + 1)}
+                        onTogglePlay={togglePlay}
+                    />
                 </div>
 
-                {/* Color Panel */}
-                {showColorPanel && (
-                    <div style={{
-                        position: 'absolute', top: 65, right: 20, background: 'rgba(0,0,0,0.95)',
-                        border: '1px solid rgba(255,255,255,0.1)', padding: 16, width: 180, pointerEvents: 'auto'
-                    }}>
-                        <div style={{ marginBottom: 12 }}>
-                            <div style={{ ...font.mono, fontSize: 8, opacity: 0.4, marginBottom: 6 }}>PRIMARY</div>
-                            <input type="color" value={customColor1} onChange={e => setCustomColor1(e.target.value)} style={{ width: 30, height: 30, border: 'none', cursor: 'pointer' }} />
-                        </div>
-                        <div style={{ marginBottom: 14 }}>
-                            <div style={{ ...font.mono, fontSize: 8, opacity: 0.4, marginBottom: 6 }}>ACCENT</div>
-                            <input type="color" value={customColor2} onChange={e => setCustomColor2(e.target.value)} style={{ width: 30, height: 30, border: 'none', cursor: 'pointer' }} />
-                        </div>
-                        <button onClick={() => { setColor1(customColor1); setColor2(customColor2); setIsCustomMode(true); }} style={{
-                            ...font.mono, width: '100%', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
-                            color: '#fff', padding: 8, cursor: 'pointer', marginBottom: 6
-                        }}>APPLY</button>
-                        {isCustomMode && <button onClick={() => { setIsCustomMode(false); setColor1(currentBeat.color1); setColor2(currentBeat.color2); }} style={{
-                            ...font.mono, width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                            color: 'rgba(255,255,255,0.5)', padding: 8, cursor: 'pointer'
-                        }}>RESET</button>}
-                    </div>
-                )}
-
-                <div className="track-sidebar">
-                    <div className="track-sidebar-title">/ARCHIVE</div>
-                    <div className="track-sidebar-section">
-                        <div className="track-sidebar-folder">CATALOG</div>
-                        <div className="track-sidebar-list">
-                            {CATALOG.map((track, index) => (
-                                <button
-                                    key={track.id}
-                                    onClick={() => loadTrack('catalog', index)}
-                                    className={`track-sidebar-item ${activeSource === 'catalog' && currentBeatIndex === index ? 'is-active' : ''}`}
-                                >
-                                    <span>{track.id}</span>
-                                    <span>{track.title}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="track-sidebar-section">
-                        <div className="track-sidebar-folder">UPLOADS</div>
-                        <div className="track-sidebar-list">
-                            {userTracks.length === 0 && (
-                                <div className="track-sidebar-empty">DROP A FILE TO START</div>
-                            )}
-                            {userTracks.map((track, index) => (
-                                <button
-                                    key={track.objectUrl}
-                                    onClick={() => loadTrack('user', index)}
-                                    className={`track-sidebar-item ${activeSource === 'user' && userIndex === index ? 'is-active' : ''}`}
-                                >
-                                    <span>U-{String(index + 1).padStart(2, '0')}</span>
-                                    <span>{track.title}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Bottom HUD */}
-                <div style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0, padding: 28,
-                    background: 'linear-gradient(transparent, rgba(0,0,0,0.9))', pointerEvents: 'auto'
-                }}>
-                    {/* Progress */}
-                    <div style={{ width: '100%', height: 2, background: 'rgba(255,255,255,0.1)', marginBottom: 22 }}>
-                        <div style={{ height: '100%', width: `${progress}%`, background: '#fff', transition: 'width 0.1s' }} />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                        {/* Track Info */}
-                        <div ref={trackInfoRef} style={{ flex: 1 }}>
-                            <div style={{ ...font.mono, fontSize: 8, opacity: 0.4, marginBottom: 6 }}>
-                                NOW PLAYING / {activeSource === 'user' ? `U-${String(userIndex + 1).padStart(2, '0')}` : currentBeat.id}
-                            </div>
-                            <div style={{ ...font.main, fontSize: 'clamp(24px, 4vw, 44px)', fontWeight: 300, letterSpacing: '0.03em', lineHeight: 1, marginBottom: 6 }}>
-                                <span style={{ opacity: 0.25 }}>"</span>{currentTrack?.title ?? 'NO TRACK'}<span style={{ opacity: 0.25 }}>"</span>
-                            </div>
-                            <div style={{ ...font.mono, fontSize: 9, opacity: 0.4, marginBottom: 4 }}>{currentTrack?.subtitle ?? 'UPLOAD A TRACK TO START'}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div ref={bpmRef} style={{
-                                    ...font.mono, fontSize: 11, opacity: 0.7,
-                                    color: detectedBPM > 0 ? '#4ade80' : 'inherit'
-                                }}>
-                                    {detectedBPM > 0 ? `${detectedBPM} BPM` : `${currentTrack?.bpm ? `${currentTrack.bpm} BPM` : '-- BPM'}`}
-                                    {detectedBPM > 0 && <span style={{ fontSize: 8, marginLeft: 4, opacity: 0.5 }}>DETECTED</span>}
-                                </div>
-                                <div style={{ ...font.mono, fontSize: 9, opacity: 0.35 }}>{currentTrack?.year ?? '--'}</div>
-                            </div>
-                        </div>
-
-                        {/* Controls */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingBottom: 6 }}>
-                            <button
-                                onClick={() => loadTrack(activeSource, activeSource === 'user' ? userIndex - 1 : currentBeatIndex - 1)}
-                                style={{ ...font.mono, background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 8 }}
-                            >
-                                PREV
-                            </button>
-                            <button onClick={togglePlay} className="hud-play-button">
-                                {isPlaying ? 'PAUSE' : 'PLAY'}
-                            </button>
-                            <button
-                                onClick={() => loadTrack(activeSource, activeSource === 'user' ? userIndex + 1 : currentBeatIndex + 1)}
-                                style={{ ...font.mono, background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 8 }}
-                            >
-                                NEXT
-                            </button>
-                        </div>
-
-                        {/* Counter */}
-                        <div style={{ flex: 1, textAlign: 'right' }}>
-                            <div style={{ ...font.mono, fontSize: 8, opacity: 0.4, marginBottom: 8 }}>{trackLabel}</div>
-                            <div style={{ ...font.mono, fontSize: 12 }}>
-                                {activeSource === 'user'
-                                    ? `${String(userIndex + 1).padStart(2, '0')} / ${String(userTracks.length).padStart(2, '0')}`
-                                    : `${String(currentBeatIndex + 1).padStart(2, '0')} / ${String(CATALOG.length).padStart(2, '0')}`}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <input type="file" ref={fileInputRef} onChange={handleFile} accept="audio/*" style={{ display: 'none' }} />
             </div>
-
-            <input type="file" ref={fileInputRef} onChange={handleFile} accept="audio/*" style={{ display: 'none' }} />
         </div>,
         document.body
-    );
+    ) : null;
 
     return (
         <>

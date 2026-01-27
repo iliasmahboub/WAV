@@ -26,3 +26,5 @@ public/beats/
 *.sw?
 
 .vercel
+
+AGENTS.md

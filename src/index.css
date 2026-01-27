@@ -13,6 +13,8 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+
+    --app-height: 100%;
 }
 
 * {
@@ -25,9 +27,17 @@ html,
 body,
 #root {
     width: 100%;
-    height: 100%;
+    height: var(--app-height);
     overflow: hidden;
     background: #000000;
+}
+
+@supports (height: 100svh) {
+    :root { --app-height: 100svh; }
+}
+
+@supports (height: 100dvh) {
+    :root { --app-height: 100dvh; }
 }
 
 body {
@@ -63,6 +73,12 @@ button:focus {
     pointer-events: none;
 }
 
+.hud-mobile-shell {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
 #root canvas {
     position: fixed;
     inset: 0;
@@ -74,7 +90,7 @@ button:focus {
     position: fixed;
     inset: 0;
     background: #050505;
-    z-index: 999;
+    z-index: 3000;
     display: grid;
     place-items: center;
     color: #f3f3f3;
@@ -95,6 +111,7 @@ button:focus {
     letter-spacing: 0.35em;
     text-transform: uppercase;
     font-weight: 600;
+    animation: intro-rise 0.6s ease-out 0.1s both;
 }
 
 .intro-meta {
@@ -115,6 +132,7 @@ button:focus {
     text-transform: uppercase;
     cursor: pointer;
     transition: background 0.2s ease, transform 0.2s ease;
+    animation: intro-rise 0.6s ease-out 0.35s both;
 }
 
 .intro-enter:hover {
@@ -298,4 +316,83 @@ button:focus {
 
 .hud-play-button:hover {
     background: rgba(243, 243, 243, 0.16);
+}
+
+@media (max-width: 720px) {
+    .hud-mobile-shell {
+        pointer-events: auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: y mandatory;
+        padding: env(safe-area-inset-top) 14px env(safe-area-inset-bottom);
+    }
+
+    .hud-toggle {
+        position: sticky !important;
+        top: 10px;
+        left: 0 !important;
+        margin-bottom: 10px;
+        z-index: 5;
+    }
+
+    .hud-main {
+        padding-bottom: 20px;
+    }
+
+    .hud-topbar {
+        position: static !important;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 8px;
+        margin-bottom: 12px;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+    }
+
+    .hud-color-panel {
+        position: static !important;
+        width: 100% !important;
+        margin: 8px 0 12px;
+    }
+
+    .track-sidebar {
+        position: static;
+        width: 100%;
+        max-height: 46svh;
+        margin-top: 6px;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+    }
+
+    .track-sidebar-list {
+        max-height: 28svh;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .hud-bottom {
+        position: static !important;
+        padding: 18px 0 8px !important;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+    }
+
+    .hud-bottom-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+    }
+
+    .hud-track-info {
+        flex: none;
+    }
+
+    .hud-controls {
+        justify-content: space-between;
+        width: 100%;
+        padding-bottom: 0;
+    }
+
+    .hud-counter {
+        text-align: left;
+    }
 }
