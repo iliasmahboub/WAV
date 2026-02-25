@@ -152,8 +152,10 @@ const TrackSidebar = ({ activeSource, currentBeatIndex, userTracks, userIndex, o
 
 interface BottomHudProps {
     progress: number;
-    trackInfoRef: React.RefObject<HTMLDivElement>;
-    bpmRef: React.RefObject<HTMLDivElement>;
+    currentTime: number;
+    duration: number;
+    trackInfoRef: React.RefObject<HTMLDivElement | null>;
+    bpmRef: React.RefObject<HTMLDivElement | null>;
     detectedBPM: number;
     currentTrack: UserTrack | (typeof CATALOG)[number] | undefined;
     activeSource: TrackSource;
@@ -168,10 +170,22 @@ interface BottomHudProps {
     onPrev: () => void;
     onNext: () => void;
     onTogglePlay: () => void;
+    onSeekPercent: (percent: number) => void;
+    onSeekBy: (deltaSeconds: number) => void;
 }
+
+const formatTimecode = (seconds: number) => {
+    if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+    const whole = Math.floor(seconds);
+    const mins = Math.floor(whole / 60);
+    const secs = whole % 60;
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+};
 
 const BottomHud = ({
     progress,
+    currentTime,
+    duration,
     trackInfoRef,
     bpmRef,
     detectedBPM,
@@ -187,14 +201,32 @@ const BottomHud = ({
     isPlaying,
     onPrev,
     onNext,
-    onTogglePlay
+    onTogglePlay,
+    onSeekPercent,
+    onSeekBy
 }: BottomHudProps) => (
     <div className="hud-bottom" style={{
         position: 'absolute', bottom: 0, left: 0, right: 0, padding: 28,
         background: 'linear-gradient(transparent, rgba(0,0,0,0.9))', pointerEvents: 'auto'
     }}>
-        <div style={{ width: '100%', height: 2, background: 'rgba(255,255,255,0.1)', marginBottom: 22 }}>
-            <div style={{ height: '100%', width: `${progress}%`, background: '#fff', transition: 'width 0.1s' }} />
+        <div className="hud-progress-shell">
+            <div className="hud-progress-track" aria-hidden="true">
+                <div className="hud-progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+            <input
+                className="hud-progress-input"
+                type="range"
+                min={0}
+                max={100}
+                step={0.1}
+                value={Number.isFinite(progress) ? progress : 0}
+                onChange={(e) => onSeekPercent(Number(e.target.value))}
+                aria-label="Seek track position"
+            />
+            <div className="hud-progress-meta" style={{ ...font.mono }}>
+                <span>{formatTimecode(currentTime)}</span>
+                <span>{formatTimecode(duration)}</span>
+            </div>
         </div>
 
         <div className="hud-bottom-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -218,16 +250,34 @@ const BottomHud = ({
                 </div>
             </div>
 
-            <div className="hud-controls" style={{ display: 'flex', alignItems: 'center', gap: 16, paddingBottom: 6 }}>
+            <div className="hud-controls" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 6 }}>
                 <button
                     onClick={onPrev}
                     style={{ ...font.mono, background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 8 }}
                 >
                     PREV
                 </button>
-                <button onClick={onTogglePlay} className="hud-play-button">
-                    {isPlaying ? 'PAUSE' : 'PLAY'}
-                </button>
+                <div className="hud-transport">
+                    <button
+                        onClick={() => onSeekBy(-10)}
+                        className="hud-transport-nudge"
+                        aria-label="Rewind 10 seconds"
+                        title="rewind 10s"
+                    >
+                        -10
+                    </button>
+                    <button onClick={onTogglePlay} className="hud-play-button">
+                        {isPlaying ? 'PAUSE' : 'PLAY'}
+                    </button>
+                    <button
+                        onClick={() => onSeekBy(10)}
+                        className="hud-transport-nudge"
+                        aria-label="Forward 10 seconds"
+                        title="forward 10s"
+                    >
+                        +10
+                    </button>
+                </div>
                 <button
                     onClick={onNext}
                     style={{ ...font.mono, background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 8 }}
@@ -262,6 +312,8 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
     const [customColor2, setCustomColor2] = useState('#fa5252');
     const [isCustomMode, setIsCustomMode] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
     const [detectedBPM, setDetectedBPM] = useState(0);
 
     const introRef = useRef<HTMLDivElement>(null);
@@ -346,6 +398,8 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
             setSource(nextSource);
             setDetectedBPM(0);
             setProgress(0);
+            setCurrentTime(0);
+            setDuration(0);
             if (isCatalog) {
                 setCurrentBeatIndex(nextIndex);
                 setPreset(catalogBeat?.mood ?? 'default');
@@ -425,16 +479,31 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
         }
         const audio = audioRef.current;
         const onEnded = () => {
+            setCurrentTime(0);
+            setProgress(0);
             if (activeSource === 'user' && userTracks.length > 0) {
                 void loadTrack('user', userIndex + 1);
             } else {
                 void loadTrack('catalog', currentBeatIndex + 1);
             }
         };
-        const onTime = () => { if (audio.duration) setProgress((audio.currentTime / audio.duration) * 100); };
+        const syncTime = () => {
+            const nextDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+            const nextTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+            setDuration(nextDuration);
+            setCurrentTime(nextTime);
+            setProgress(nextDuration > 0 ? (nextTime / nextDuration) * 100 : 0);
+        };
         audio.addEventListener('ended', onEnded);
-        audio.addEventListener('timeupdate', onTime);
-        return () => { audio.removeEventListener('ended', onEnded); audio.removeEventListener('timeupdate', onTime); };
+        audio.addEventListener('timeupdate', syncTime);
+        audio.addEventListener('loadedmetadata', syncTime);
+        audio.addEventListener('durationchange', syncTime);
+        return () => {
+            audio.removeEventListener('ended', onEnded);
+            audio.removeEventListener('timeupdate', syncTime);
+            audio.removeEventListener('loadedmetadata', syncTime);
+            audio.removeEventListener('durationchange', syncTime);
+        };
     }, [currentBeatIndex, loadTrack, activeSource, userIndex, userTracks.length]);
 
     const finishIntro = useCallback(() => {
@@ -483,6 +552,27 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
         }
         const playing = audioManager.toggle();
         setIsPlaying(playing);
+    };
+
+    const seekToPercent = (percent: number) => {
+        const audio = audioRef.current;
+        if (!audio) return;
+        const safeDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+        if (safeDuration <= 0) return;
+        const clampedPercent = Math.min(100, Math.max(0, percent));
+        audio.currentTime = (clampedPercent / 100) * safeDuration;
+        setCurrentTime(audio.currentTime);
+        setProgress(clampedPercent);
+    };
+
+    const seekBy = (deltaSeconds: number) => {
+        const audio = audioRef.current;
+        if (!audio) return;
+        const safeDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+        if (safeDuration <= 0) return;
+        audio.currentTime = Math.min(safeDuration, Math.max(0, audio.currentTime + deltaSeconds));
+        setCurrentTime(audio.currentTime);
+        setProgress((audio.currentTime / safeDuration) * 100);
     };
 
     const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -624,6 +714,8 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
 
                     <BottomHud
                         progress={progress}
+                        currentTime={currentTime}
+                        duration={duration}
                         trackInfoRef={trackInfoRef}
                         bpmRef={bpmRef}
                         detectedBPM={detectedBPM}
@@ -640,6 +732,8 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
                         onPrev={() => void loadTrack(activeSource, activeSource === 'user' ? userIndex - 1 : currentBeatIndex - 1)}
                         onNext={() => void loadTrack(activeSource, activeSource === 'user' ? userIndex + 1 : currentBeatIndex + 1)}
                         onTogglePlay={togglePlay}
+                        onSeekPercent={seekToPercent}
+                        onSeekBy={seekBy}
                     />
                 </div>
 

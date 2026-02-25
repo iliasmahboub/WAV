@@ -318,6 +318,115 @@ button:focus {
     background: rgba(243, 243, 243, 0.16);
 }
 
+.hud-transport {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(5, 5, 5, 0.72);
+    backdrop-filter: blur(10px);
+}
+
+.hud-transport-nudge {
+    min-width: 42px;
+    padding: 10px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+.hud-transport-nudge:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.hud-progress-shell {
+    position: relative;
+    margin-bottom: 22px;
+    padding-top: 2px;
+}
+
+.hud-progress-track {
+    width: 100%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.hud-progress-fill {
+    height: 100%;
+    background: #fff;
+    transition: width 0.08s linear;
+}
+
+.hud-progress-input {
+    position: absolute;
+    inset: -10px 0 auto 0;
+    width: 100%;
+    height: 24px;
+    background: transparent;
+    appearance: none;
+    cursor: ew-resize;
+}
+
+.hud-progress-input::-webkit-slider-runnable-track {
+    height: 2px;
+    background: transparent;
+}
+
+.hud-progress-input::-webkit-slider-thumb {
+    appearance: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: -3px;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    background: #000;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.hud-progress-shell:hover .hud-progress-input::-webkit-slider-thumb,
+.hud-progress-input:focus-visible::-webkit-slider-thumb {
+    opacity: 1;
+}
+
+.hud-progress-input::-moz-range-track {
+    height: 2px;
+    background: transparent;
+}
+
+.hud-progress-input::-moz-range-thumb {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    background: #000;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.hud-progress-shell:hover .hud-progress-input::-moz-range-thumb,
+.hud-progress-input:focus-visible::-moz-range-thumb {
+    opacity: 1;
+}
+
+.hud-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    font-size: 8px;
+    letter-spacing: 0.18em;
+    color: rgba(255, 255, 255, 0.46);
+}
+
 @media (max-width: 720px) {
     .hud-mobile-shell {
         pointer-events: auto;
@@ -390,6 +499,18 @@ button:focus {
         justify-content: space-between;
         width: 100%;
         padding-bottom: 0;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .hud-transport {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .hud-play-button {
+        flex: 1;
+        text-align: center;
     }
 
     .hud-counter {
