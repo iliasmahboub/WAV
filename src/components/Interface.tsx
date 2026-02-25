@@ -315,6 +315,8 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [detectedBPM, setDetectedBPM] = useState(0);
+    const [isMobileViewport, setIsMobileViewport] = useState(false);
+    const [showLibraryPanel, setShowLibraryPanel] = useState(true);
 
     const introRef = useRef<HTMLDivElement>(null);
     const introDoneRef = useRef(false);
@@ -609,15 +611,29 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
     };
 
     useEffect(() => {
-        if (!showIntro) setShowUI(true);
-    }, [showIntro]);
+        const media = window.matchMedia('(max-width: 720px)');
+        const applyViewportState = (matches: boolean) => {
+            setIsMobileViewport(matches);
+            if (!matches) {
+                setShowUI(true);
+                setShowLibraryPanel(true);
+                return;
+            }
+            if (!mobileInitRef.current && !showIntro) {
+                setShowUI(false);
+                setShowLibraryPanel(false);
+                mobileInitRef.current = true;
+            }
+        };
 
-    useEffect(() => {
-        if (showIntro || mobileInitRef.current) return;
-        if (window.matchMedia('(max-width: 720px)').matches) {
-            setShowUI(false);
-            mobileInitRef.current = true;
+        applyViewportState(media.matches);
+        const onChange = (event: MediaQueryListEvent) => applyViewportState(event.matches);
+        if (typeof media.addEventListener === 'function') {
+            media.addEventListener('change', onChange);
+            return () => media.removeEventListener('change', onChange);
         }
+        media.addListener(onChange);
+        return () => media.removeListener(onChange);
     }, [showIntro]);
 
     useEffect(() => {
@@ -626,6 +642,29 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
             setColor2(customColor2);
         }
     }, [customColor1, customColor2, isCustomMode, setColor1, setColor2]);
+
+    const handleCatalogButton = () => {
+        if (isMobileViewport) {
+            if (activeSource === 'catalog') {
+                setShowLibraryPanel(prev => !prev);
+                return;
+            }
+            setShowLibraryPanel(true);
+        }
+        void loadTrack('catalog', currentBeatIndex);
+    };
+
+    const handleUploadsButton = () => {
+        if (userTracks.length === 0) return;
+        if (isMobileViewport) {
+            if (activeSource === 'user') {
+                setShowLibraryPanel(prev => !prev);
+                return;
+            }
+            setShowLibraryPanel(true);
+        }
+        void loadTrack('user', userIndex);
+    };
 
     const introPortal = showIntro ? createPortal(
         <div ref={introRef} className={`intro-shell ${introStage === 'booting' ? 'is-booting' : ''}`}>
@@ -685,8 +724,8 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
                         currentBeatIndex={currentBeatIndex}
                         userIndex={userIndex}
                         font={font}
-                        onLoadCatalog={(index) => void loadTrack('catalog', index)}
-                        onLoadUser={(index) => void loadTrack('user', index)}
+                        onLoadCatalog={() => handleCatalogButton()}
+                        onLoadUser={() => handleUploadsButton()}
                         onToggleColors={() => setShowColorPanel(!showColorPanel)}
                         onUploadClick={() => fileInputRef.current?.click()}
                     />
@@ -703,14 +742,22 @@ export const Interface = ({ setColor1, setColor2, setPreset }: InterfaceProps) =
                         onReset={() => { setIsCustomMode(false); setColor1(currentBeat.color1); setColor2(currentBeat.color2); }}
                     />
 
-                    <TrackSidebar
-                        activeSource={activeSource}
-                        currentBeatIndex={currentBeatIndex}
-                        userTracks={userTracks}
-                        userIndex={userIndex}
-                        onLoadCatalog={(index) => void loadTrack('catalog', index)}
-                        onLoadUser={(index) => void loadTrack('user', index)}
-                    />
+                    {showLibraryPanel && (
+                        <TrackSidebar
+                            activeSource={activeSource}
+                            currentBeatIndex={currentBeatIndex}
+                            userTracks={userTracks}
+                            userIndex={userIndex}
+                            onLoadCatalog={(index) => {
+                                if (isMobileViewport) setShowLibraryPanel(false);
+                                void loadTrack('catalog', index);
+                            }}
+                            onLoadUser={(index) => {
+                                if (isMobileViewport) setShowLibraryPanel(false);
+                                void loadTrack('user', index);
+                            }}
+                        />
+                    )}
 
                     <BottomHud
                         progress={progress}

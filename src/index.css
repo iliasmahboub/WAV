@@ -437,15 +437,19 @@ button:focus {
     }
 
     .hud-toggle {
-        position: sticky !important;
-        top: 10px;
-        left: 0 !important;
-        margin-bottom: 10px;
-        z-index: 5;
+        position: fixed !important;
+        top: auto !important;
+        left: auto !important;
+        right: 14px;
+        bottom: calc(env(safe-area-inset-bottom) + 14px);
+        margin: 0;
+        z-index: 12;
+        background: rgba(0, 0, 0, 0.88) !important;
+        backdrop-filter: blur(8px);
     }
 
     .hud-main {
-        padding-bottom: 20px;
+        padding-bottom: 74px;
     }
 
     .hud-topbar {
